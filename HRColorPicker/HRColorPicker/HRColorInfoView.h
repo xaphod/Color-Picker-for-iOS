@@ -28,11 +28,13 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import "HRColorPickerView.h"
 
 @protocol HRColorInfoView
 @property (nonatomic, strong) UIColor *color;
+@property (nonatomic, weak) HRColorPickerView *pickerView; // parent
 @end
 
-@interface HRColorInfoView : UIView <HRColorInfoView>
+@interface HRColorInfoView : UIView <HRColorInfoView, UITextFieldDelegate>
 
 @end

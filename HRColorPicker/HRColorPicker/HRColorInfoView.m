@@ -28,8 +28,8 @@
 
 #import "HRColorInfoView.h"
 
-const CGFloat kHRColorInfoViewLabelHeight = 18.;
-const CGFloat kHRColorInfoViewCornerRadius = 3.;
+const CGFloat kHRColorInfoViewLabelHeight = 22.0;
+const CGFloat kHRColorInfoViewCornerRadius = 3.0;
 
 @interface HRColorInfoView () {
     UIColor *_color;
@@ -37,11 +37,12 @@ const CGFloat kHRColorInfoViewCornerRadius = 3.;
 @end
 
 @implementation HRColorInfoView {
-    UILabel *_hexColorLabel;
+    UITextField *_hexColorTextField;
     CALayer *_borderLayer;
 }
 
 @synthesize color = _color;
+@synthesize pickerView;
 
 - (id)init {
     return [self initWithFrame:CGRectZero];
@@ -65,13 +66,16 @@ const CGFloat kHRColorInfoViewCornerRadius = 3.;
 
 - (void)_init {
     self.backgroundColor = [UIColor clearColor];
-    _hexColorLabel = [[UILabel alloc] init];
-    _hexColorLabel.backgroundColor = [UIColor clearColor];
-    _hexColorLabel.font = [UIFont systemFontOfSize:12];
-    _hexColorLabel.textColor = [UIColor colorWithWhite:0.5 alpha:1];
-    _hexColorLabel.textAlignment = NSTextAlignmentCenter;
+    UIColor *textColor = [UIColor colorWithWhite:0.5 alpha:1];;
+    _hexColorTextField = [[UITextField alloc] init];
+    _hexColorTextField.backgroundColor = [UIColor clearColor];
+    _hexColorTextField.font = [UIFont systemFontOfSize:12];
+    _hexColorTextField.textColor = textColor;
+    _hexColorTextField.textAlignment = NSTextAlignmentCenter;
+    _hexColorTextField.delegate = self;
+    _hexColorTextField.tintColor = textColor;
 
-    [self addSubview:_hexColorLabel];
+    [self addSubview:_hexColorTextField];
 
     _borderLayer = [[CALayer alloc] initWithLayer:self.layer];
     _borderLayer.cornerRadius = kHRColorInfoViewCornerRadius;
@@ -83,7 +87,7 @@ const CGFloat kHRColorInfoViewCornerRadius = 3.;
 - (void)layoutSubviews {
     [super layoutSubviews];
 
-    _hexColorLabel.frame = CGRectMake(
+    _hexColorTextField.frame = CGRectMake(
             0,
             CGRectGetHeight(self.frame) - kHRColorInfoViewLabelHeight,
             CGRectGetWidth(self.frame),
@@ -97,7 +101,7 @@ const CGFloat kHRColorInfoViewCornerRadius = 3.;
     CGFloat r, g, b, a;
     [_color getRed:&r green:&g blue:&b alpha:&a];
     int rgb = (int) (r * 255.0f)<<16 | (int) (g * 255.0f)<<8 | (int) (b * 255.0f)<<0;
-    _hexColorLabel.text = [NSString stringWithFormat:@"#%06x", rgb];
+    _hexColorTextField.text = [NSString stringWithFormat:@"#%06x", rgb];
     [self setNeedsDisplay];
 }
 
@@ -111,7 +115,70 @@ const CGFloat kHRColorInfoViewCornerRadius = 3.;
 }
 
 - (UIView *)viewForBaselineLayout {
-    return _hexColorLabel;
+    return _hexColorTextField;
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    NSString *str = textField.text;
+    if (!str)
+        return;
+    NSInteger charsToAdd = 7 - str.length;
+    if (charsToAdd < 0) {
+        NSAssert(false, @"err");
+        return;
+    }
+    const unichar zeros[] = {'0','0','0','0','0','0','0'};
+    NSString *add = [NSString stringWithCharacters:zeros length:charsToAdd];
+    str = [str stringByAppendingString:add];
+    
+    if (str.length != 7) {
+        NSAssert(false, @"err");
+        return;
+    }
+    
+    unsigned int red = 0;
+    unsigned int green = 0;
+    unsigned int blue = 0;
+    
+    NSScanner *redScanner = [NSScanner scannerWithString:[str substringWithRange:NSMakeRange(1, 2)]];
+    NSScanner *greenScanner = [NSScanner scannerWithString:[str substringWithRange:NSMakeRange(3, 2)]];
+    NSScanner *blueScanner = [NSScanner scannerWithString:[str substringWithRange:NSMakeRange(5, 2)]];
+    [redScanner scanHexInt:&red];
+    [greenScanner scanHexInt:&green];
+    [blueScanner scanHexInt:&blue];
+
+    UIColor *color = [UIColor colorWithRed:((CGFloat)red / 255.0) green:((CGFloat)green / 255.0) blue:((CGFloat)blue / 255.0) alpha:1];
+    self.color = color;
+    self.pickerView.color = color;
+    [self.pickerView sendActions];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
+}
+
+- (BOOL)textField:(UITextField *)textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string {
+    if (range.location == 0) {
+        return NO; // cannot delete #
+    }
+    NSString *str = textField.text;
+    if (!str) {
+        return NO;
+    }
+    if ([str characterAtIndex:0] != '#') {
+        return NO;
+    }
+    
+    NSString *newstr = [str stringByReplacingCharactersInRange:range withString:string];
+    if (newstr.length > 7) {
+        return NO;
+    }
+    NSCharacterSet* notAllowed = [[NSCharacterSet characterSetWithCharactersInString:@"#0123456789aAbBcCdDeEfF"] invertedSet];
+    if ([newstr rangeOfCharacterFromSet:notAllowed].location != NSNotFound) {
+        return NO;
+    }
+    return YES;
 }
 
 @end

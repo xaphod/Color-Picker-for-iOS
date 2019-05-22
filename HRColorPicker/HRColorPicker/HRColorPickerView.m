@@ -106,6 +106,7 @@ typedef struct timeval timeval;
 - (UIView <HRColorInfoView> *)colorInfoView {
     if (!_colorInfoView) {
         _colorInfoView = [[HRColorInfoView alloc] init];
+        _colorInfoView.pickerView = self;
         _colorInfoView.color = self.color;
         [self addSubview:self.colorInfoView];
     }
